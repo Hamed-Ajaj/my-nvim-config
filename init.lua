@@ -89,7 +89,29 @@ P.S. You can delete this when you're done too. It's your config now! :)
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
+vim.keymap.set({ 'n', 'i', 'v' }, '<C-s>', '<cmd>w<cr>', { desc = 'Save file' })
 
+vim.api.nvim_create_autocmd({ 'InsertLeave', 'TextChanged' }, {
+  pattern = '*',
+  callback = function()
+    if vim.bo.modified and vim.fn.expand '%' ~= '' then
+      vim.cmd 'silent! write'
+    end
+  end,
+})
+
+local function goto_source_definition()
+  local params = vim.lsp.util.make_position_params()
+  vim.lsp.buf_request(0, 'textDocument/sourceDefinition', params, function(err, result)
+    if result and not vim.tbl_isempty(result) then
+      vim.lsp.util.jump_to_location(result[1], 'utf-8')
+    else
+      vim.lsp.buf.definition()
+    end
+  end)
+end
+
+vim.keymap.set('n', 'gd', goto_source_definition, { desc = 'Go to source definition' })
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
 
