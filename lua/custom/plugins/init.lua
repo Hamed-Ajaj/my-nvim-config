@@ -3,13 +3,4 @@
 --
 -- See the kickstart.nvim README for more information
 return {
-  {
-    'NvChad/nvim-colorizer.lua',
-    event = 'BufReadPre',
-    opts = {
-      user_default_options = {
-        tailwind = true,
-      },
-    },
-  },
 }
