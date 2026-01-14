@@ -785,7 +785,7 @@ require('lazy').setup({
       {
         '<leader>f',
         function()
-          require('conform').format { async = true, lsp_format = 'fallback' }
+          require('conform').format { async = true, lsp_format = false }
         end,
         mode = '',
         desc = '[F]ormat buffer',
@@ -803,7 +803,7 @@ require('lazy').setup({
         else
           return {
             timeout_ms = 500,
-            lsp_format = 'fallback',
+            lsp_format = false,
           }
         end
       end,
@@ -811,7 +811,9 @@ require('lazy').setup({
         lua = { 'stylua' },
         go = { 'gofmt' },
         javascript = { 'prettier' },
+        javascriptreact = { 'prettier' },
         typescript = { 'prettier' },
+        typescriptreact = { 'prettier' },
         rust = { 'rustfmt' },
         zig = { 'zigfmt' },
         c = { 'clang-format' },
