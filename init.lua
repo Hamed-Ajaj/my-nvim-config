@@ -1002,6 +1002,7 @@ require('lazy').setup({
           'typescript',
           'tsx',
           'json',
+          'vue',
 
           -- misc
           'lua',
