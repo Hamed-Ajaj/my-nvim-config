@@ -90,7 +90,7 @@ P.S. You can delete this when you're done too. It's your config now! :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 vim.keymap.set({ 'n', 'i', 'v' }, '<C-s>', '<cmd>w<cr>', { desc = 'Save file' })
-
+vim.keymap.set('n', 'K', vim.lsp.buf.hover)
 vim.api.nvim_create_autocmd({ 'InsertLeave', 'TextChanged' }, {
   pattern = '*',
   callback = function()
@@ -100,18 +100,22 @@ vim.api.nvim_create_autocmd({ 'InsertLeave', 'TextChanged' }, {
   end,
 })
 
-local function goto_source_definition()
-  local params = vim.lsp.util.make_position_params()
-  vim.lsp.buf_request(0, 'textDocument/sourceDefinition', params, function(err, result)
-    if result and not vim.tbl_isempty(result) then
-      vim.lsp.util.jump_to_location(result[1], 'utf-8')
-    else
-      vim.lsp.buf.definition()
-    end
-  end)
+local function goto_definition_first()
+  vim.lsp.buf.definition {
+    reuse_win = true,
+    on_list = function(options)
+      local item = options.items and options.items[1]
+      if not item then
+        return
+      end
+
+      vim.cmd.edit(vim.fn.fnameescape(item.filename))
+      vim.api.nvim_win_set_cursor(0, { item.lnum, math.max(item.col - 1, 0) })
+    end,
+  }
 end
 
-vim.keymap.set('n', 'gd', goto_source_definition, { desc = 'Go to source definition' })
+vim.keymap.set('n', 'gd', goto_definition_first, { desc = 'Go to definition' })
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
 
