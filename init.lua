@@ -90,13 +90,73 @@ P.S. You can delete this when you're done too. It's your config now! :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 vim.keymap.set({ 'n', 'i', 'v' }, '<C-s>', '<cmd>w<cr>', { desc = 'Save file' })
-vim.keymap.set('n', 'K', vim.lsp.buf.hover)
+
+local function hover_as_plaintext(config)
+  config = config or {}
+  config.focus_id = 'textDocument/hover'
+
+  vim.lsp.buf_request_all(0, 'textDocument/hover', function(client)
+    return vim.lsp.util.make_position_params(0, client.offset_encoding)
+  end, function(results, ctx)
+    if not ctx.bufnr or vim.api.nvim_get_current_buf() ~= ctx.bufnr then
+      return
+    end
+
+    local contents = {}
+    local empty_response = false
+
+    for _, response in pairs(results) do
+      local result = response.result
+      if result and result.contents then
+        local lines
+        if type(result.contents) == 'table' and result.contents.kind == 'plaintext' then
+          lines = vim.split(result.contents.value or '', '\n', { trimempty = true })
+        else
+          lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+          lines = vim.tbl_filter(function(line)
+            return line ~= '```'
+          end, lines)
+        end
+
+        if #lines > 0 then
+          vim.list_extend(contents, lines)
+          table.insert(contents, '---')
+        else
+          empty_response = true
+        end
+      end
+    end
+
+    if #contents == 0 then
+      if config.silent ~= true then
+        vim.notify(empty_response and 'Empty hover response' or 'No information available', vim.log.levels.INFO)
+      end
+      return
+    end
+
+    contents[#contents] = nil
+    vim.lsp.util.open_floating_preview(contents, 'plaintext', config)
+  end)
+end
+
+vim.keymap.set('n', 'K', hover_as_plaintext, { desc = 'Hover documentation' })
 vim.api.nvim_create_autocmd({ 'InsertLeave', 'TextChanged' }, {
   pattern = '*',
   callback = function()
     if vim.bo.modified and vim.fn.expand '%' ~= '' then
       vim.cmd 'silent! write'
     end
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  group = vim.api.nvim_create_augroup('kickstart-markdown-fallback', { clear = true }),
+  pattern = { 'markdown' },
+  callback = function(args)
+    pcall(vim.treesitter.stop, args.buf)
+    vim.bo[args.buf].syntax = 'markdown'
+    vim.wo.conceallevel = 2
+    vim.wo.concealcursor = 'nc'
   end,
 })
 
@@ -724,6 +784,7 @@ require('lazy').setup({
             },
           },
         },
+        sqls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -765,6 +826,9 @@ require('lazy').setup({
 
           -- Zig
           'zls',
+
+          -- SQL
+          'sqls',
         }, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
         automatic_installation = false,
         handlers = {
@@ -1014,6 +1078,7 @@ require('lazy').setup({
           'markdown',
           'markdown_inline',
           'query',
+          'sql',
           'vim',
           'vimdoc',
 
@@ -1025,6 +1090,9 @@ require('lazy').setup({
         auto_install = true,
         highlight = {
           enable = true,
+          -- Markdown currently hits a query/runtime mismatch in this setup.
+          -- Keep Treesitter for code and fall back to standard highlighting there.
+          disable = { 'markdown', 'markdown_inline' },
           additional_vim_regex_highlighting = { 'ruby' },
         },
         indent = {
